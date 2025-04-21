@@ -198,6 +198,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
         self.allScopePrefixes = set()
         self.param_list = set()
         self.paramUrl_list = set()
+        self.paramValue_list = set()
+        self.value_list = set()
         self.paramSus_list = set()
         self.paramSusUrl_list = set()
         self.susParamText = set()
@@ -793,6 +795,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
         # Initialise text fields to hold variations of outParamList JTextArea
         self.txtParamsWithURL = ""
         self.txtParamsOnly = ""
+        self.txtParamsWithValues = ""
+        self.txtValuesOnly = ""
         self.txtParamsSusWithURL = ""
         self.txtParamsSusOnly = ""
         self.txtParamsQuery = ""
@@ -2415,6 +2419,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
             self.roots.clear()
             self.param_list.clear()
             self.paramUrl_list.clear()
+            self.paramValue_list.clear()
+            self.value_list.clear()
             self.paramSus_list.clear()
             self.paramSusUrl_list.clear()
             self.susParamText.clear()
@@ -2422,6 +2428,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
             self.txtParamsOnly = ""
             self.txtParamsWithURL = ""
             self.txtParamsSusOnly = ""
+            self.txtParamsWithValues = ""
+            self.txtValuesOnly = ""
             self.txtParamsSusWithURL = ""
             self.txtParamsQuery = ""
             self.txtParamQuery = ""
@@ -2916,6 +2924,7 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
     def getBurpParams(self):
         """
         Get all the parameters that Burp identifies as parmeters and add them to the paramUrl_list set.
+        Get all the values that Burp identifies as values and add them to the paramValue_list set.
         """
         try:
             self.txtDebugDetail.text = "getBurpParams"
@@ -2942,7 +2951,7 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                         and self.cbParamXmlAttr.isSelected()
                     )
                 ):
-                    self.addParameter(param.getName().strip(), "Certain", "BURP")
+                    self.addParameter(param.getName().strip(), "Certain", "BURP", value=param.getValue().strip())
         except Exception as e:
             self._stderr.println("getBurpParams 1")
             self._stderr.println(e)
@@ -3209,6 +3218,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                 # De-dupe the lists
                 self.txtParamsOnly = "\n".join(sorted(self.param_list))
                 self.txtParamsWithURL = "\n".join(sorted(self.paramUrl_list))
+                self.txtParamsWithValues = "\n".join(sorted(self.paramValue_list))
+                self.txtValuesOnly = "\n".join(sorted(self.value_list))
                 self.txtParamsSusOnly = "\n".join(sorted(self.paramSus_list))
                 self.txtParamsSusWithURL = "\n".join(sorted(self.paramSusUrl_list))
                 
@@ -3279,6 +3290,8 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
 
             # Clean up
             self.paramUrl_list.clear()
+            self.paramValue_list.clear()
+            self.value_list.clear()
             self.paramSusUrl_list.clear()
             
         except CancelGAPRequested as e:
@@ -3493,7 +3506,31 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                             except Exception as e:
                                 self._stderr.println("fileWriteParams 2")
                                 self._stderr.println(e)
-                                
+
+                        fileName = os.path.expanduser(self.getMainFilePath() + "_params_with_values.txt")
+                        self.txtDebug.text = "Writing file " + fileName
+                        with open(fileName, "w") as f:
+                            self.checkIfCancel()
+                            try:
+                                f.write(self.txtParamsWithValues.encode("UTF-8"))
+                                f.write("\n".encode("UTF-8"))
+                                f.close()
+                            except Exception as e:
+                                self._stderr.println("fileWriteParamsWithValues 2")
+                                self._stderr.println(e)
+
+                        fileName = os.path.expanduser(self.getMainFilePath() + "_values.txt")
+                        self.txtDebug.text = "Writing file " + fileName
+                        with open(fileName, "w") as f:
+                            self.checkIfCancel()
+                            try:
+                                f.write(self.txtValuesOnly.encode("UTF-8"))
+                                f.write("\n".encode("UTF-8"))
+                                f.close()
+                            except Exception as e:
+                                self._stderr.println("fileWriteValues 2")
+                                self._stderr.println(e)
+
                     # Write a file for each root, to the roots directory
                     if len(self.roots) == 1:
                         for root in self.roots:
@@ -3511,6 +3548,31 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                                 except Exception as e:
                                     self._stderr.println("fileWriteParams 3")
                                     self._stderr.println(e)
+
+                            fileName = os.path.expanduser(self.getFilePath(root) + "_params_with_values.txt")
+                            self.txtDebug.text = "Writing file " + fileName
+                            with open(fileName, "w") as f:
+                                self.checkIfCancel()
+                                try:
+                                    f.write(self.txtParamsWithValues.encode("UTF-8"))
+                                    f.write("\n".encode("UTF-8"))
+                                    f.close()
+                                except Exception as e:
+                                    self._stderr.println("fileWriteParamsWithValues 3")
+                                    self._stderr.println(e)
+
+                            fileName = os.path.expanduser(self.getFilePath(root) + "_values.txt")
+                            self.txtDebug.text = "Writing file " + fileName
+                            with open(fileName, "w") as f:
+                                self.checkIfCancel()
+                                try:
+                                    f.write(self.txtValuesOnly.encode("UTF-8"))
+                                    f.write("\n".encode("UTF-8"))
+                                    f.close()
+                                except Exception as e:
+                                    self._stderr.println("fileWriteValues 3")
+                                    self._stderr.println(e)
+
                     else:
                         for root in self.roots:
                             fileText = ""
@@ -3541,6 +3603,28 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                                         f.close
                                     except Exception as e:
                                         self._stderr.println("fileWriteParams 5")
+                                        self._stderr.println(e)
+
+                                fileName = os.path.expanduser(self.getFilePath(root) + "_params_with_values.txt")
+                                self.txtDebug.text = "Writing file " + fileName
+                                with open(fileName, "w") as f:
+                                    try:
+                                        f.write(self.txtParamsWithValues.encode("UTF-8"))
+                                        f.write("\n".encode("UTF-8"))
+                                        f.close()
+                                    except Exception as e:
+                                        self._stderr.println("fileWriteParamsWithValues 5")
+                                        self._stderr.println(e)
+
+                                fileName = os.path.expanduser(self.getFilePath(root) + "_values.txt")
+                                self.txtDebug.text = "Writing file " + fileName
+                                with open(fileName, "w") as f:
+                                    try:
+                                        f.write(self.txtValuesOnly.encode("UTF-8"))
+                                        f.write("\n".encode("UTF-8"))
+                                        f.close()
+                                    except Exception as e:
+                                        self._stderr.println("fileWriteValues 5")
                                         self._stderr.println(e)
                                 
         except IOError as e:
@@ -4912,7 +4996,7 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
             
         return matches
     
-    def addParameter(self, param, confidence="", context=""):
+    def addParameter(self, param, confidence="", context="", value=""):
         """
         Determine whether to add a parameter to the parameter list, and also to the word list depending on ticked options
         """
@@ -4959,6 +5043,11 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, ITab):
                     #origin = self.removeStdPort(origin)
                     self.param_list.add(param)
                     self.paramUrl_list.add(param + "  [" + origin + "]")
+
+                    value = self._helpers.bytesToString(value).encode('utf-8')
+                    if value:
+                        self.paramValue_list.add(param + "=" + value)
+                        self.value_list.add(value)
 
                     # If the Words option is checked and the Include parameters is also checked, add the parameter to the word list
                     if self.cbWordsEnabled.isSelected() and self.cbWordParams.isSelected():
